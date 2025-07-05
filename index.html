@@ -12,6 +12,24 @@
   <button onclick="autoDecrypt()">Decrypt & Run</button>
 
   <script>
+    const LOG_URL = "https://script.google.com/macros/s/AKfycbxrrq32FlvF29Qa0BOR-PFA0kKMXeSsrH4sKobKyOS5jpWYtVyvJOCly64lcMLd4cteFA/exec"; // Replace with your deployed script URL
+
+    async function logDecryptionResult(success, extra = "") {
+      try {
+        await fetch(LOG_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: success ? "✅ Decryption successful" : "❌ Decryption failed " + extra,
+            userAgent: navigator.userAgent,
+            pageURL: window.location.href
+          })
+        });
+      } catch (e) {
+        console.warn("⚠️ Logging failed:", e);
+      }
+    }
+
     async function autoDecrypt() {
       const password = document.getElementById('password').value;
       const status = document.getElementById('status');
@@ -48,6 +66,8 @@
         const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
         const decoded = new TextDecoder().decode(decrypted);
 
+        await logDecryptionResult(true); // ✅ Log success
+
         // Load decrypted HTML into browser
         document.open();
         document.write(decoded);
@@ -55,6 +75,7 @@
       } catch (err) {
         console.error('Decryption failed:', err);
         status.textContent = '❌ Failed to decrypt. Check password or ensure encrypted.txt is present.';
+        await logDecryptionResult(false, "(" + err.message + ")"); // ❌ Log failure
       }
     }
   </script>
