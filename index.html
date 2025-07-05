@@ -1,4 +1,3 @@
-<!-- decryptor.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,22 +11,26 @@
   <button onclick="autoDecrypt()">Decrypt & Run</button>
 
   <script>
-    const LOG_URL = "https://script.google.com/macros/s/AKfycbxrrq32FlvF29Qa0BOR-PFA0kKMXeSsrH4sKobKyOS5jpWYtVyvJOCly64lcMLd4cteFA/exec"; // Replace with your deployed script URL
+    // Google Form POST URL (replace /viewform with /formResponse)
+    const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdZzQQSxzSHQfEorZ0ZvpkmEce3T3jWhj3IgpR_bxGQCy8FLA/formResponse";
 
-    async function logDecryptionResult(success, extra = "") {
-      try {
-        await fetch(LOG_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: success ? "✅ Decryption successful" : "❌ Decryption failed " + extra,
-            userAgent: navigator.userAgent,
-            pageURL: window.location.href
-          })
-        });
-      } catch (e) {
-        console.warn("⚠️ Logging failed:", e);
-      }
+    // Entry IDs for each field from your form:
+    const ENTRY_MESSAGE = "entry.633239596";
+    const ENTRY_USERAGENT = "entry.738211941";
+    const ENTRY_URL = "entry.1002318799";
+
+    function logToGoogleForm(message) {
+      const formData = new FormData();
+      formData.append(ENTRY_MESSAGE, message);
+      formData.append(ENTRY_USERAGENT, navigator.userAgent);
+      formData.append(ENTRY_URL, window.location.href);
+
+      // CORS-safe no-cors POST
+      fetch(FORM_URL, {
+        method: "POST",
+        mode: "no-cors",
+        body: formData
+      });
     }
 
     async function autoDecrypt() {
@@ -66,16 +69,16 @@
         const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
         const decoded = new TextDecoder().decode(decrypted);
 
-        await logDecryptionResult(true); // ✅ Log success
+        logToGoogleForm("✅ Decryption successful");
 
-        // Load decrypted HTML into browser
+        // Load decrypted HTML
         document.open();
         document.write(decoded);
         document.close();
       } catch (err) {
         console.error('Decryption failed:', err);
         status.textContent = '❌ Failed to decrypt. Check password or ensure encrypted.txt is present.';
-        await logDecryptionResult(false, "(" + err.message + ")"); // ❌ Log failure
+        logToGoogleForm("❌ Decryption failed (" + err.message + ")");
       }
     }
   </script>
