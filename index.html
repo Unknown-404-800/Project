@@ -1,0 +1,62 @@
+<!-- decryptor.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Auto Decrypt Encrypted HTML</title>
+</head>
+<body>
+  <h2>🔓 Decrypting site...</h2>
+  <p id="status">Loading encrypted.txt...</p>
+  <input type="password" id="password" placeholder="Enter password to unlock" autofocus>
+  <button onclick="autoDecrypt()">Decrypt & Run</button>
+
+  <script>
+    async function autoDecrypt() {
+      const password = document.getElementById('password').value;
+      const status = document.getElementById('status');
+      if (!password) return alert('Enter password');
+
+      try {
+        const res = await fetch('encrypted.txt');
+        if (!res.ok) throw new Error('File not found');
+        const base64 = (await res.text()).trim();
+        const binaryStr = atob(base64);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+
+        const iv = bytes.slice(0, 12);
+        const data = bytes.slice(12);
+
+        const enc = new TextEncoder();
+        const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
+        const key = await crypto.subtle.deriveKey(
+          {
+            name: "PBKDF2",
+            salt: enc.encode("salt"),
+            iterations: 100000,
+            hash: "SHA-256"
+          },
+          keyMaterial,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["decrypt"]
+        );
+
+        const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
+        const decoded = new TextDecoder().decode(decrypted);
+
+        // Load decrypted HTML into browser
+        document.open();
+        document.write(decoded);
+        document.close();
+      } catch (err) {
+        console.error('Decryption failed:', err);
+        status.textContent = '❌ Failed to decrypt. Check password or ensure encrypted.txt is present.';
+      }
+    }
+  </script>
+</body>
+</html>
